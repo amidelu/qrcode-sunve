@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:my_app/utils/constants.dart';
 
@@ -17,19 +18,21 @@ class _InstallScreenState extends State<InstallScreen> {
   final storage = GetStorage();
   final String successMessage = 'done';
   final String failedMessage = 'failed';
-  int appId = 0;
-  String status = '';
+  String? appId;
+  String? status;
 
   @override
   void initState() {
     super.initState();
-    appId = storage.read(appID);
-    status = storage.read(status);
-    _checkInstallationStatus();
+    appId = storage.read(appID) ?? '';
+    status = storage.read(status!) ?? '';
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _checkInstallationStatus();
+    });
   }
 
   Future<void> _checkInstallationStatus() async {
-    if (appId.toString().isNotEmpty) {
+    if (appId!.isNotEmpty && status!.isNotEmpty) {
       if (status == 'done') {
         Navigator.push(
           context,
@@ -39,13 +42,13 @@ class _InstallScreenState extends State<InstallScreen> {
         );
       } else {
         setState(() {
-          storage.write(status, 'failed');
+          storage.write(status!, 'failed');
         });
       }
     } else {
       final randomId = Random().nextInt(10000);
-      storage.write(appID, randomId);
-      storage.write(status, 'new');
+      storage.write(appID, randomId.toString());
+      storage.write(status!, 'new');
 
       final String response = successMessage;
 
@@ -56,52 +59,9 @@ class _InstallScreenState extends State<InstallScreen> {
         );
       } else {
         setState(() {
-          storage.write(status, 'failed');
+          storage.write(status!, 'failed');
         });
       }
-
-      //   // Generate a random app ID and set status as 'new'
-      //   final Random random = Random();
-      //   final int randomId = random.nextInt(10000);
-      //   appId = randomId.toString();
-      //   status = 'new';
-      //
-      //   // Insert app data into SQLite database
-      //   // await DatabaseHelper.instance.insertAppData(appId, status);
-      //
-      //   // Send app data to API
-      //   final String response =
-      //       successMessage; //await ApiService.sendDataToApi(appId);
-      //
-      //   if (response == successMessage) {
-      //     // Update status as 'done'
-      //     //await DatabaseHelper.instance.updateStatus(appId, 'done');
-      //
-      //     // Redirect to QR scan screen on success
-      //     Navigator.push(
-      //       context,
-      //       MaterialPageRoute(builder: (context) => QRScanScreen()),
-      //     );
-      //   } else {
-      //     // Show retry button on failure
-      //     setState(() {
-      //       status = 'failed';
-      //     });
-      //   }
-      // } else {
-      //   if (results.first['status'] == 'done') {
-      //     Navigator.push(
-      //       context,
-      //       MaterialPageRoute(builder: (context) => QRScanScreen()),
-      //     );
-      //   } else {
-      //     setState(() {
-      //       status = 'failed';
-      //     });
-      //   }
-      // }
-      //
-      // setState(() {});
     }
   }
 
@@ -126,7 +86,8 @@ class _InstallScreenState extends State<InstallScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => QRScanScreen()),
+                    MaterialPageRoute(
+                        builder: (context) => const QRScanScreen()),
                   );
                 },
               )

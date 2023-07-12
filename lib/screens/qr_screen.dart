@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 
-import '../api_service.dart';
+import '../utils/constants.dart';
 
 class QRScanScreen extends StatefulWidget {
   const QRScanScreen({super.key});
@@ -13,6 +14,7 @@ class QRScanScreen extends StatefulWidget {
 class _QRScanScreenState extends State<QRScanScreen> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
 
+  final storage = GetStorage();
   QRViewController? controller;
   String qrCodeData = '';
   bool sendingData = false;
@@ -33,10 +35,16 @@ class _QRScanScreenState extends State<QRScanScreen> {
           Expanded(
             flex: 1,
             child: Center(
-              child: ElevatedButton(
-                onPressed: sendingData ? null : _sendQRCodeData,
-                child: const Text('Send'),
-              ),
+              child: sendingData
+                  ? const Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  : ElevatedButton(
+                      onPressed: () {
+                        _sendQRCodeData(context);
+                      },
+                      child: const Text('Send'),
+                    ),
             ),
           ),
         ],
@@ -49,22 +57,21 @@ class _QRScanScreenState extends State<QRScanScreen> {
     controller.scannedDataStream.listen((scanData) {
       setState(() {
         qrCodeData = scanData.code!;
-        debugPrint('QR Code: $qrCodeData');
       });
     });
   }
 
-  void _sendQRCodeData() async {
+  void _sendQRCodeData(BuildContext context) async {
     setState(() {
       sendingData = true;
     });
 
-    final String response = await ApiService.sendDataToApi(qrCodeData);
+    String response = 'success';
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Result'),
+        title: Text('Result: $qrCodeData'),
         content: Text(response == 'success'
             ? 'Data sent successfully.'
             : 'Failed to send data.'),
@@ -77,6 +84,8 @@ class _QRScanScreenState extends State<QRScanScreen> {
                 setState(() {
                   qrCodeData = '';
                   sendingData = false;
+                  storage.write(status, 'done');
+                  Navigator.pop(context);
                 });
               } else {
                 Navigator.pop(context);
@@ -86,6 +95,34 @@ class _QRScanScreenState extends State<QRScanScreen> {
         ],
       ),
     );
+
+    /*await ApiService.sendDataToApi(qrCodeData).then((response) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text('Result: $qrCodeData'),
+          content: Text(response == 'success'
+              ? 'Data sent successfully.'
+              : 'Failed to send data.'),
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                if (response == 'success') {
+                  // Clear QR code data and continue scanning
+                  setState(() {
+                    qrCodeData = '';
+                    sendingData = false;
+                  });
+                } else {
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          ],
+        ),
+      );
+    });*/
   }
 
   @override
